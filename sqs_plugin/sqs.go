@@ -2,13 +2,17 @@ package sqs_plugin
 
 import (
 	"fmt"
-	"time"
 
+	"github.com/aws/aws-sdk-go/service/sqs"
 	"gorm.io/gorm"
 )
 
 // SQSPlugin is a GORM plugin for triggering SQS messages on updates
-type SQSPlugin struct{}
+type SQSPlugin struct {
+	SQSClient  *sqs.SQS
+	SQSMessage *string
+	QueueURI   *string
+}
 
 // Name returns the name of the plugin
 func (p *SQSPlugin) Name() string {
@@ -25,15 +29,14 @@ func (p *SQSPlugin) Initialize(db *gorm.DB) error {
 // afterUpdate is the callback function to be executed after an update operation
 func (p *SQSPlugin) afterUpdate(db *gorm.DB) {
 	fmt.Println("After update callback triggered. Pushing message to SQS...")
-
 	// Perform your SQS message pushing logic here
-	// Example: pushMessageToSQS("Update operation detected!")
-
+	_, err := p.SQSClient.SendMessage(&sqs.SendMessageInput{
+		MessageBody: p.SQSMessage,
+		QueueUrl:    p.QueueURI,
+	})
+	if err != nil {
+		fmt.Println("Failed to published message to sqs")
+		return
+	}
 	fmt.Println("Message pushed to SQS successfully.")
-}
-
-type CustomModel struct {
-	ID        uint `gorm:"primarykey"`
-	Name      string
-	UpdatedAt time.Time
 }
