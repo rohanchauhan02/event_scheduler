@@ -5,7 +5,6 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 // SQSPlugin is a GORM plugin for triggering SQS messages on updates
