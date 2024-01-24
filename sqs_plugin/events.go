@@ -17,7 +17,7 @@ func (p *SQSPlugin) Update(value interface{}) error {
 	// Register the plugin's callback
 	p.MysqlSess.Callback().Update().Before("gorm:before_update").Register("sqs_plugin:before_update", p.beforeUpdate)
 	p.MysqlSess.Callback().Update().After("gorm:after_update").Register("sqs_plugin:after_update", p.afterUpdate)
-	p.MysqlSess.Updates(value)
+	// p.MysqlSess.Updates(value)
 	return nil
 }
 
