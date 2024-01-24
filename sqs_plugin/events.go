@@ -40,6 +40,24 @@ func (p *SQSPlugin) Update(value interface{}, column string, query string, args 
 	return nil
 }
 
+func (p *SQSPlugin) Save(value interface{}, column string) error {
+	// Use a mutex to ensure exclusive access to the database
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	// Register the plugin's callback
+	db := p.MysqlSess
+	db.Callback().Update().Before("gorm:before_update").Register("before_update", func(d *gorm.DB) { p.beforeUpdate(d, column) })
+	db.Callback().Update().After("gorm:after_update").Register("after_update", p.afterUpdate)
+
+	// Perform the update
+	if err := db.Save(value).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // beforeUpdate is the callback function to be executed before an update operation
 func (p *SQSPlugin) beforeUpdate(db *gorm.DB, columnName string) {
 	fmt.Println("Before update callback triggered. Finding existing data...")
