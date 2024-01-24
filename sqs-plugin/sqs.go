@@ -1,4 +1,4 @@
-package sqsplugin
+package sqs_plugin
 
 import (
 	"fmt"
