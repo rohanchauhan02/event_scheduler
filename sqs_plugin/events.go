@@ -5,6 +5,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // SQSPlugin is a GORM plugin for triggering SQS messages on updates
@@ -13,11 +14,10 @@ type SQSPlugin struct {
 	MysqlSess *gorm.DB
 }
 
-func (p *SQSPlugin) Update(value interface{}) error {
+func (p *SQSPlugin) Innitiate() error {
 	// Register the plugin's callback
 	p.MysqlSess.Callback().Update().Before("gorm:before_update").Register("sqs_plugin:before_update", p.beforeUpdate)
 	p.MysqlSess.Callback().Update().After("gorm:after_update").Register("sqs_plugin:after_update", p.afterUpdate)
-	p.MysqlSess.Updates(value)
 	return nil
 }
 
