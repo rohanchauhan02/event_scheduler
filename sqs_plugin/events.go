@@ -24,7 +24,7 @@ func (p *SQSPlugin) Update(value interface{}) error {
 // beforeUpdate is the callback function to be executed before an update operation
 func (p *SQSPlugin) beforeUpdate(db *gorm.DB) {
 	fmt.Println("before update callback triggered. Pushing message to SQS...")
-	fmt.Println(p.MysqlSess.Statement.SQL.String())
+	fmt.Println(db.Statement.SQL.String())
 }
 
 // afterUpdate is the callback function to be executed after an update operation
@@ -39,5 +39,5 @@ func (p *SQSPlugin) afterUpdate(db *gorm.DB) {
 	// 	fmt.Println("Failed to published message to sqs")
 	// 	return
 	// }
-	fmt.Println(p.MysqlSess.Statement.SQL.String())
+	fmt.Println(db.Statement.SQL.String())
 }
