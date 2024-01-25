@@ -50,11 +50,10 @@ func (p *SQSPlugin) Save(value interface{}, column string) error {
 	db.Callback().Update().Before("gorm:before_update").Register("before_update", func(d *gorm.DB) { p.beforeUpdate(d, column) })
 	db.Callback().Update().After("gorm:after_update").Register("after_update", p.afterUpdate)
 
-	// Perform the update
+	// Perform the save
 	if err := db.Save(value).Error; err != nil {
 		return err
 	}
-
 	return nil
 }
 
