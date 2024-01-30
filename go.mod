@@ -4,6 +4,7 @@ go 1.21.6
 
 require (
 	github.com/aws/aws-sdk-go v1.50.2
+	github.com/jinzhu/gorm v1.9.16
 	gorm.io/gorm v1.25.5
 )
 

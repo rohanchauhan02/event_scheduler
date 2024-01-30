@@ -1,4 +1,4 @@
-package sqs_plugin
+package gormpluginv1
 
 import (
 	"encoding/json"
@@ -6,31 +6,32 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/aws/aws-sdk-go/service/sqs"
-	"gorm.io/gorm"
+	// "github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/jinzhu/gorm"
 )
 
-// SQSPlugin is a GORM plugin for triggering SQS messages on updates
-type SQSPlugin struct {
+// FinancePlugin is a GORM plugin for triggering finance event updates
+type FinancePlugin struct {
 	mu           sync.Mutex
-	SQSClient    *sqs.SQS
 	MysqlSess    *gorm.DB
-	QueueURI     *string // Replace with your actual SQS Queue URL
-	SQSMessage   *string // Replace with your actual SQS message structure
+	// SQSClient    *sqs.SQS
+	// QueueURI     *string
+	// SQSMessage   *string
 	OldData      interface{}
 	NewData      interface{}
 	TriggerEvent bool
 }
 
-func (p *SQSPlugin) Update(value interface{}, column string, query string, args ...interface{}) error {
+func (p *FinancePlugin) Update(value interface{}, column string, query string, args ...interface{}) error {
 	// Use a mutex to ensure exclusive access to the database
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
 	// Register the plugin's callback
 	db := p.MysqlSess
-	db.Callback().Update().Before("gorm:before_update").Register("before_update", func(d *gorm.DB) { p.beforeUpdate(d, column) })
-	db.Callback().Update().After("gorm:after_update").Register("after_update", p.afterUpdate)
+	db.Callback().Update().Before("gorm:before_update").Register("before_update", func(scope *gorm.Scope) { p.beforeUpdate(scope, column) })
+	// Use "gorm:commit_or_rollback_transaction" to catch the commit event
+	// db.Callback().Update().After("gorm:commit_or_rollback_transaction").Register("custom_after_commit", p.afterUpdateCommitOrRollback)
 
 	// Perform the update
 	if err := db.Where(query, args...).Updates(value).Error; err != nil {
@@ -40,15 +41,15 @@ func (p *SQSPlugin) Update(value interface{}, column string, query string, args 
 	return nil
 }
 
-func (p *SQSPlugin) Save(value interface{}, column string) error {
+func (p *FinancePlugin) Save(value interface{}, column string) error {
 	// Use a mutex to ensure exclusive access to the database
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
 	// Register the plugin's callback
 	db := p.MysqlSess
-	db.Callback().Update().Before("gorm:before_update").Register("before_update", func(d *gorm.DB) { p.beforeUpdate(d, column) })
-	db.Callback().Update().After("gorm:after_update").Register("after_update", p.afterUpdate)
+	db.Callback().Update().Before("gorm:before_update").Register("before_update", func(scope *gorm.Scope) { p.beforeUpdate(scope, column) })
+	// db.Callback().Update().After("gorm:commit_or_rollback_transaction").Register("custom_after_commit", p.afterUpdateCommitOrRollback)
 
 	// Perform the save
 	if err := db.Save(value).Error; err != nil {
@@ -58,11 +59,11 @@ func (p *SQSPlugin) Save(value interface{}, column string) error {
 }
 
 // beforeUpdate is the callback function to be executed before an update operation
-func (p *SQSPlugin) beforeUpdate(db *gorm.DB, columnName string) {
+func (p *FinancePlugin) beforeUpdate(scope *gorm.Scope, columnName string) {
 	fmt.Println("Before update callback triggered. Finding existing data...")
 
 	// Debugging: Print the SQL query before execution
-	db = db.Debug()
+	db := scope.DB().Debug()
 
 	// Query and store the existing data
 	if err := db.First(p.OldData).Error; err != nil {
@@ -73,7 +74,7 @@ func (p *SQSPlugin) beforeUpdate(db *gorm.DB, columnName string) {
 		fmt.Println("Existing data found:", p.OldData)
 	}
 
-	updatedData := db.Statement.Dest
+	updatedData := scope.Value
 	fmt.Println("Updated data:", updatedData)
 	jsonData, err := json.Marshal(updatedData)
 	if err != nil {
@@ -118,22 +119,29 @@ func (p *SQSPlugin) beforeUpdate(db *gorm.DB, columnName string) {
 	}
 }
 
-// afterUpdate is the callback function to be executed after an update operation
-func (p *SQSPlugin) afterUpdate(db *gorm.DB) {
-	fmt.Println("After update callback triggered. Pushing message to SQS...")
+// afterUpdateCommitOrRollback is the callback function to be executed after a commit or rollback operation
+// func (p *FinancePlugin) afterUpdateCommitOrRollback(scope *gorm.Scope) {
+// 	if !scope.HasError() {
+// 		p.AfterCommit(scope.DB())
+// 	}
+// }
 
-	// Debugging: Print the SQL query before execution
-	_ = db.Debug()
+// // AfterCommit is the callback function to be executed after a commit operation
+// func (p *FinancePlugin) AfterCommit(db *gorm.DB) {
+// 	fmt.Println("After commit callback triggered. Pushing message to SQS...")
 
-	if p.TriggerEvent {
-		_, err := p.SQSClient.SendMessage(&sqs.SendMessageInput{
-			MessageBody: p.SQSMessage,
-			QueueUrl:    p.QueueURI,
-		})
-		if err != nil {
-			fmt.Println("Failed to publish message to SQS:", err)
-			return
-		}
-		fmt.Println("Message successfully published to SQS.")
-	}
-}
+// 	// Debugging: Print the SQL query before execution
+// 	_ = db.Debug()
+
+// 	if p.TriggerEvent {
+// 		_, err := p.SQSClient.SendMessage(&sqs.SendMessageInput{
+// 			MessageBody: p.SQSMessage,
+// 			QueueUrl:    p.QueueURI,
+// 		})
+// 		if err != nil {
+// 			fmt.Println("Failed to publish message to SQS:", err)
+// 			return
+// 		}
+// 		fmt.Println("Message successfully published to SQS.")
+// 	}
+// }
